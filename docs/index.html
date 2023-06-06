@@ -23,7 +23,10 @@
     <p>Connect requires an object as parameter which has these fields</p>
     <ul>
         <li><b>client: </b> name of DBMS Client like: mysql, pg, sqlite3, .....</li>
-        <li><b>uri: </b> connection uri for database something like: mysql://root@localhost:3306/dbName</li>
+        <li><b>host: </b> database host like: localhost</li>
+        <li><b>user: </b> database username</li>
+        <li><b>password: </b> database password</li>
+        <li><b>database: </b> database name</li>
         <li><b>filename: </b> filename for sqlite3 database, :memory:, test.db, ....</li>
     </ul>
 
@@ -36,11 +39,18 @@
         const {createTable} = connect({client: 'sqlite3', filename: ':memory:'})
 
         await createTable("users", {
-            name: 'string',
+            name: 'string|required',
             email: 'string',
             username: 'string|unique',
             age: 'number',
         })
+
+        //with references
+
+        await createTable("tasks", {
+            name: 'string|required',
+            user_id: 'number|reference=users'
+          })
 
         // createTable automatically adds 'id' field to all tables.
     </code></pre>

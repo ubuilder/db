@@ -4,21 +4,27 @@ const app = express();
 import { connect } from "../src/connect.js";
 
 const { getModel, createTable, removeTable } = connect({
-  filename: ":memory:",
-  client: "sqlite3",
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'ubuilder',
 });
 
-const Users = getModel("users");
+const Users = getModel("tasks");
 
 app.use(express.json());
 
 app.post("/make_table", async (req, res) => {
-  await createTable("users", [{ name: "user_name", type: "string" }]);
+  await createTable("tasks", {
+    name: 'string|required',
+    user_id: 'number|reference=users'
+  });
+
   res.send("success");
 });
 
 app.post("/remove_table", async (req, res) => {
-  await removeTable("users_2");
+  await removeTable("users");
   res.send({ success: true });
 });
 
@@ -27,7 +33,7 @@ app.get("/users", async (req, res) => {
     await Users.query({
       where: {
         // active: true,
-        user_name: "ss:like",
+        // user_name: "ss:like",
         // user_name: "edriss:!=",
         // user_name: null
       },

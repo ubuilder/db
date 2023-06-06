@@ -2,12 +2,21 @@ import { Model } from "./model.js";
 import { createTable, removeTable } from "./table.js";
 import knex from "knex";
 
-export function connect({ uri, client = "mysql", filename } = {}) {
+export function connect({ 
+  client = "mysql", 
+  filename = ":memory:",
+  host,
+  user,
+  password,
+  database
+} = {}) {
   const db = knex({
     client: client,
     connection: {
-      filename,
-      uri,
+      host,
+      user,
+      password,
+      database,
     },
     useNullAsDefault: true,
   });

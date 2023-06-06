@@ -23,6 +23,10 @@ export async function createTable(name, columns, db) {
         } else if (part.startsWith("default")) {
           const value = part.split("=")[1];
           query = query.defaultTo(value);
+        } else if (part.startsWith("reference")) {
+          const value = part.split("=")[1];
+          query = query.unsigned()
+          .references(value+".id")
         } else {
           console.log("not implemented: ", part);
         }
