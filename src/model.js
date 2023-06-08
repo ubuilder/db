@@ -1,17 +1,41 @@
+let schema;
+
 export class Model {
   constructor(tableName, db) {
     this.tableName = tableName;
     this.db = db;
   }
 
-  async query(options) {
-    const { select, sort, where, page, perPage } = options;
+  async getSchema() {
+    if (!schema) {
+      let schemaList = await this.db("schema").select("*");
 
+      schema = {};
+      schemaList.map((schem) => {
+        schema[schem.table] = JSON.parse(schem.schema);
+      });
+
+      return schema;
+    }
+  }
+
+  async query(options = {}) {
+    const { select = {}, sort, where = {}, page = 1, perPage = 10 } = options;
+
+    /**
+     * @type {import('knex').Knex.QueryBuilder}
+     */
     let query = this.db(this.tableName);
+
+    await this.getSchema();
 
     if (where) {
       for (const key in where) {
         const value = where[key];
+
+        if (typeof value === "object") {
+          break;
+        }
 
         if (typeof value === "string" && value.includes(":")) {
           const [filterValue, filterType] = value.split(":");
@@ -37,11 +61,17 @@ export class Model {
       }
     }
 
-    if (select) {
-      query = query.select(select);
-    } else {
-      query = query.select("*");
+    let fields = [];
+
+    for (let field in schema[this.tableName]) {
+      if (schema[this.tableName][field].type === "relation") continue;
+      if (select[field]) {
+        fields.push(field);
+      }
     }
+    if (!fields.includes("id")) fields.unshift("id");
+
+    query = query.select(fields);
 
     if (sort) {
       query = query.orderBy(sort.column, sort.order);
@@ -62,7 +92,53 @@ export class Model {
     const offset = (currentPage - 1) * itemsPerPage;
     query = query.offset(offset).limit(itemsPerPage);
 
-    const data = await query;
+    let data = await query;
+
+    data = await Promise.all(
+      data.map(async (row) => {
+        for (let key in schema[this.tableName]) {
+          const value = schema[this.tableName][key];
+
+          if (value.type === "relation") {
+            const otherSchema = schema[value.table];
+
+            let fieldName;
+            for (let field in otherSchema) {
+              if (
+                otherSchema[field].type === "relation" &&
+                otherSchema[field].table === this.tableName
+              ) {
+                fieldName = field;
+              }
+            }
+
+            const otherModel = new Model(value.table, this.db);
+            let filter = {};
+            if (otherSchema[fieldName].many) {
+              filter[fieldName] = {
+                id: row.id,
+              };
+            } else {
+              filter[fieldName] = row.id;
+            }
+
+            if (select[key]) {
+              row[key] = await otherModel
+                .query({
+                  where: filter,
+                  select: select[key] ?? {},
+                })
+                .then((res) => res.data);
+              if (!value.many) {
+                row[key] = row[key][0];
+              }
+            }
+          }
+        }
+
+        return row;
+      })
+    );
 
     return {
       data,

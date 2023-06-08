@@ -2,22 +2,25 @@ import { Model } from "./model.js";
 import { createTable, removeTable } from "./table.js";
 import knex from "knex";
 
-export function connect({ 
-  client = "mysql", 
+export function connect({
+  client = "sqlite3",
   filename = ":memory:",
   host,
   user,
   password,
-  database
+  database,
 } = {}) {
   const db = knex({
     client: client,
-    connection: {
-      host,
-      user,
-      password,
-      database,
-    },
+    connection:
+      client === "sqlite3"
+        ? { filename }
+        : {
+            host,
+            user,
+            password,
+            database,
+          },
     useNullAsDefault: true,
   });
 
