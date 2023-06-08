@@ -20,7 +20,7 @@ export class Model {
   }
 
   async query(options = {}) {
-    const { select = {}, sort, where = {}, page = 1, perPage = 10 } = options;
+    const { select, sort, where = {}, page = 1, perPage = 10 } = options;
 
     /**
      * @type {import('knex').Knex.QueryBuilder}
@@ -63,15 +63,19 @@ export class Model {
 
     let fields = [];
 
-    for (let field in schema[this.tableName]) {
-      if (schema[this.tableName][field].type === "relation") continue;
-      if (select[field]) {
-        fields.push(field);
+    if (select) {
+      for (let field in schema[this.tableName]) {
+        if (schema[this.tableName][field].type === "relation") continue;
+        if (select[field]) {
+          fields.push(field);
+        }
       }
-    }
-    if (!fields.includes("id")) fields.unshift("id");
+      if (!fields.includes("id")) fields.unshift("id");
 
-    query = query.select(fields);
+      query = query.select(fields);
+    } else {
+      query = query.select("*");
+    }
 
     if (sort) {
       query = query.orderBy(sort.column, sort.order);
