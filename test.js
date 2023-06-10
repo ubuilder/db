@@ -1,58 +1,83 @@
 import { connect } from "./src/connect.js";
 
-const { createTable, getModel } = connect({
-  filename: "test.db",
+const { createTable, removeTable, getModel } = connect({
+  filename: ":memory:",
 });
 
-await createTable("tasks", {
+// create...
+await createTable("task", {
   title: "string|required",
-  user: "users",
+  users: "user[]",
 });
 
-await createTable("users", {
+await createTable("user", {
   name: "string|required",
-  tasks: "tasks[]",
+  tasks: "task[]",
 });
 
-const Tasks = getModel("tasks");
-const Users = getModel("users");
+// remove...
+// await removeTable('user')
+// await removeTable('task')
 
-await Users.insert({ name: "hadi" });
-await Users.insert({ name: "edriss" });
-await Tasks.insert({ user: 1, title: "task 1 hadi" });
-await Tasks.insert({ user: 1, title: "task 2 hadi" });
-await Tasks.insert({ user: 2, title: "task 3 edriss" });
 
-// const userList = await Users.query({
+const Tasks = getModel("task");
+
+await Tasks.insert({title: 'test'})
+await Tasks.insert({title: 'todo'})
+
+const allTasks = await Tasks.query({
+  select: {
+    title: 'to:like',
+    name: true,
+    field: true,
+    user: {
+      id: 2
+    }
+  }
+})
+
+console.log(allTasks)
+// const Users = getModel("user");
+
+// await Users.insert({ name: "hadi" });
+// await Users.insert({ name: "edriss" });
+// await Tasks.insert({ user_id: 1, title: "task 1 hadi" });
+// await Tasks.insert({ user_id: 1, title: "task 2 hadi" });
+// await Tasks.insert({ user_id: 2, title: "task 3 edriss" });
+
+// // const userList = await Users.query({
+// //   select: {
+// //     name: true,
+// //     tasks: {
+// //       title: true,
+// //       user: true,
+// //       //   user: {
+// //       //     name: true,
+// //       //   },
+// //     },
+// //   },
+// // });
+
+// const userList = await Tasks.query({
+//   where: {
+//     // task: {
+//     //   id: 3,
+//     // },
+//   },
 //   select: {
-//     name: true,
-//     tasks: {
-//       title: true,
-//       user: true,
-//       //   user: {
+//     // name: true,
+//     // tasks: false
+//     title: true,
+//     user: true
+//     // {
+//     //   title: true,
+//     //   user: true,
+//     //   //   user: {
 //       //     name: true,
 //       //   },
-//     },
+//     // },
 //   },
 // });
 
-const userList = await Users.query({
-  where: {
-    tasks: {
-      id: 3,
-    },
-  },
-  select: {
-    name: true,
-    tasks: {
-      title: true,
-      user: true,
-      //   user: {
-      //     name: true,
-      //   },
-    },
-  },
-});
-
-console.log(JSON.stringify(userList));
-console.log("not closing..");
+// console.log(JSON.stringify(userList));
+// console.log("not closing..");

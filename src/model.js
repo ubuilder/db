@@ -118,7 +118,7 @@ export class Model {
 
             const otherModel = new Model(value.table, this.db);
             let filter = {};
-            if (otherSchema[fieldName].many) {
+            if (otherSchema?.[fieldName]?.many) {
               filter[fieldName] = {
                 id: row.id,
               };
@@ -126,7 +126,7 @@ export class Model {
               filter[fieldName] = row.id;
             }
 
-            if (select[key]) {
+            if (select?.[key]) {
               row[key] = await otherModel
                 .query({
                   where: filter,
