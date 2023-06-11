@@ -77,10 +77,6 @@ export class Model {
       query = query.select("*");
     }
 
-    if (sort) {
-      query = query.orderBy(sort.column, sort.order);
-    }
-
     let currentPage = page ?? 1;
     let itemsPerPage = perPage ?? 10;
 
@@ -95,6 +91,10 @@ export class Model {
 
     const offset = (currentPage - 1) * itemsPerPage;
     query = query.offset(offset).limit(itemsPerPage);
+
+    if (sort) {
+      query = query.orderBy(sort.column, sort.order);
+    }
 
     let data = await query;
 
