@@ -93,37 +93,44 @@ export function getModel(tableName, db) {
         for (let fieldName in schema[tableName]) {
           const field = schema[tableName][fieldName];
 
-          if (select[fieldName] && field.type === "relation") {
-            const otherSchema = schema[field.table];
+          if (field.type === "relation") {
+            if (select[fieldName]) {
+              const otherSchema = schema[field.table];
 
-            const otherModel = getModel(field.table, db);
-
-            let otherFieldName;
-            for (let otherField in otherSchema) {
-              if (
-                otherSchema[otherField].type === "relation" &&
-                otherSchema[otherField].table === tableName
-              ) {
-                otherFieldName = otherField;
+              const otherModel = getModel(field.table, db);
+              let otherFieldName;
+              for (let otherField in otherSchema) {
+                if (
+                  otherSchema[otherField].type === "relation" &&
+                  otherSchema[otherField].table === tableName
+                ) {
+                  otherFieldName = otherField;
+                }
               }
-            }
-
-            if (otherSchema[otherFieldName].many) {
-              row[fieldName] = await otherModel.get(row[field.field_name]);
+              if (otherSchema[otherFieldName].many) {
+                row[fieldName] = await otherModel.get(row[field.field_name]);
+              } else {
+                row[fieldName] = await otherModel
+                  .query({
+                    where: {
+                      [otherFieldName + "_id"]: row.id,
+                    },
+                    select: select[fieldName] ?? { [otherFieldName]: false },
+                    perPage: 1000,
+                    page: 1,
+                  })
+                  .then((res) => res.data);
+              }
             } else {
-              const otherQuery = await otherModel.query({
-                where: {
-                  [otherFieldName + "_id"]: row.id,
-                },
-                select: select[fieldName] ?? { [otherFieldName]: false },
-                perPage: 1000,
-                page: 1,
-              });
-
-              row[fieldName] = otherQuery.data;
+              // skip relations in query (todo: depth support)
             }
-          } else if(field.type === 'boolean') {
-            row[fieldName] = !!row[fieldName]
+          } else if (field.type === "boolean") {
+            row[fieldName] = !!row[fieldName];
+          } else {
+            // do not change to query result
+          }
+          if (row[fieldName] === undefined) {
+            delete row[fieldName];
           }
         }
         return row;
@@ -138,65 +145,112 @@ export function getModel(tableName, db) {
     };
   }
 
+  function toArray(data) {
+    if (Array.isArray(data)) {
+      return data;
+    } else if (data) {
+      return [data];
+    } else {
+      return [];
+    }
+  }
+
   async function insert(data) {
     await getSchema();
 
-    let rows;
-    if (Array.isArray(data)) {
-      rows = data;
-    } else {
-      rows = [data];
-    }
+    let rows = toArray(data);
 
     let payload = [];
     for (let index in rows) {
+      // prepare payload in this block
       const row = rows[index];
       payload[index] = {};
-      for (let field in schema[tableName]) {
-        // if (
-        //   schema[tableName][field].type === "relation" &&
-        //   schema[tableName][field].many &&
-        //   Array.isArray(row[field])
-        // ) {
-        //   break;
-        // }
-        if (
-          schema[tableName][field].type === "relation" &&
-          !schema[tableName][field].many &&
-          row[schema[tableName][field].field_name]
-        ) {
+      for (let fieldName in schema[tableName]) {
+        const field = schema[tableName][fieldName];
+
+        if (field.type === "relation") {
+          console.log(fieldName, field.many);
+          if (field.many) {
+            // skip for now
+            continue;
+          }
           //
-          payload[index][schema[tableName][field].field_name] =
-            row[schema[tableName][field].field_name];
+          // first of all do not supoort arrays
+          if (row[field.field_name]) {
+            payload[index][field.field_name] = row[field.field_name];
+            // id
+          } else if (row[fieldName]) {
+            // object
 
-          continue;
-        }
-        if (typeof row[field] !== "undefined") {
-          if (schema[tableName][field].type === "relation") {
-            if (row[field]) {
-              const otherSchema = getModel(schema[tableName][field].table, db);
-
-              if(typeof row[field] === 'number') {
-                payload[index][schema[tableName][field].field_name] = row[field];
-                // id of the field...
-              } else {
-                const result = await otherSchema.insert(row[field]);
-
-              if (!Array.isArray(result)) {
-                payload[index][schema[tableName][field].field_name] = result.id;
-              }
-            }
-
-            }
+            const result = await getModel(field.table, db).insert(
+              row[fieldName]
+            );
+            payload[index][field.field_name] = result.id;
           } else {
-            payload[index][field] = row[field];
+            // nothing..
+          }
+        } else {
+          if (typeof row[fieldName] !== "undefined") {
+            payload[index][fieldName] = row[fieldName];
           }
         }
       }
     }
 
-   const result = await db(tableName).insert(payload);
+    const result = await db(tableName).insert(payload);
 
+    for (let index in rows) {
+      const row = rows[index];
+      for (let fieldName in schema[tableName]) {
+        const field = schema[tableName][fieldName];
+
+        if (field.type === "relation" && field.many) {
+          const model = getModel(field.table, db);
+
+          let otherFieldName;
+          for (let otherField in schema[field.table]) {
+            if (
+              schema[field.table][otherField].type === "relation" &&
+              schema[field.table][otherField].table === tableName
+            ) {
+              otherFieldName = schema[field.table][otherField].field_name;
+            }
+          }
+          console.log({
+            result,
+            otherFieldName,
+            tableName,
+            fieldName,
+            field,
+            schema,
+            row,
+          });
+
+          if (Array.isArray(row[fieldName]) && row[fieldName].length > 0) {
+            if (typeof row[fieldName]?.[0] === "object") {
+              const otherRows = row[fieldName].map((row) => ({
+                ...row,
+                [otherFieldName]: result[index],
+              }));
+
+              console.log({ otherRows });
+              await model.insert(otherRows);
+            } else {
+              for (let id of row[fieldName]) {
+                console.log(id, {
+                  [otherFieldName]: result[index],
+                });
+                await model.update(id, {
+                  [otherFieldName]: result[index],
+                });
+              }
+              // update
+              console.log("update other model", row);
+            }
+          }
+        }
+      }
+    }
 
     if (Array.isArray(data)) {
       return data.map((d, index) => ({ id: result[index], ...d }));
