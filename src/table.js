@@ -7,12 +7,25 @@ function getPivotTableName(field1, field2) {
 }
 
 export async function createTable(tableName, columns, db) {
-  let schema = {};
-  console.log('create table: ', tableName, Object.keys(columns))
-  await db.schema.createTable(tableName, async (table) => {
+  let resultLog = "create table: " + tableName + " ";
+  console.log(resultLog);
+
+  let tables = {};
+
+  if (await db.schema.hasTable("schema")) {
+    const schema = db("schema").select("*");
+    console.log(schema);
+
+    tables[schema.table] = schema.schema;
+  }
+
+  tables[tableName] = {};
+
+  await db.schema.createTable(tableName, (table) => {
+    console.log("create table", tableName);
     let query;
     table.increments("id");
-    schema["id"] = { type: "id" };
+    tables[tableName]["id"] = { type: "id" };
     for (let name in columns) {
       const value = columns[name].split("|");
 
@@ -20,27 +33,26 @@ export async function createTable(tableName, columns, db) {
 
       if (type === "number") {
         query = table.integer(name);
-        schema[name] = { type: "number" };
+        tables[tableName][name] = { type: "number" };
       } else if (type === "string") {
         query = table.text(name);
-        schema[name] = { type: "string" };
+        tables[tableName][name] = { type: "string" };
       } else if (type == "boolean") {
         query = table.boolean(name);
-        schema[name] = { type: "boolean" };
+        tables[tableName][name] = { type: "boolean" };
       } else {
         // type is relation...
 
-        schema[name] = { type: "relation" };
+        tables[tableName][name] = { type: "relation" };
         let relationName = type;
 
         if (type.indexOf("[]") > 0) {
-          schema[name]["many"] = true;
+          tables[tableName][name]["many"] = true;
           relationName = type.replace("[]", "");
-          schema[name]['table'] = relationName
+          tables[tableName][name]["table"] = relationName;
 
-          const res = await getSchema(relationName);
-          if (res) {
-            const otherSchema = JSON.parse(res[0].schema);
+          if (tables[relationName]) {
+            const otherSchema = tables(relationName);
 
             let otherFieldName;
             for (let key in otherSchema) {
@@ -50,11 +62,15 @@ export async function createTable(tableName, columns, db) {
               }
             }
 
+            console.log({ otherSchema, otherFieldName });
             if (otherSchema[otherFieldName].many) {
               const pivotTableName = getPivotTableName(relationName, tableName);
               // create pivot table.
-              console.log("create pivot table: ", pivotTableName, [name + '_id', otherFieldName + '_id']);
-              await db.schema.createTable(pivotTableName, (builder) => {
+              console.log("create pivot table: ", pivotTableName, [
+                name + "_id",
+                otherFieldName + "_id",
+              ]);
+              db.schema.createTable(pivotTableName, (builder) => {
                 builder.integer(name + "_id").references(relationName + ".id");
                 builder
                   .integer(otherFieldName + "_id")
@@ -63,8 +79,9 @@ export async function createTable(tableName, columns, db) {
             }
           }
         } else {
-          schema[name]["many"] = false;
-        schema[name]["table"] = relationName;
+          tables[tableName][name]["many"] = false;
+          tables[tableName][name]["table"] = relationName;
+          tables[tableName][name]["field_name"] = name + "_id";
 
           query = table.integer(name + "_id").references(relationName + ".id");
         }
@@ -73,31 +90,29 @@ export async function createTable(tableName, columns, db) {
       for (let part of value) {
         if (part === "required") {
           query = query.notNullable();
-          schema[name]["required"] = true;
+          tables[tableName][name]["required"] = true;
         } else if (part === "unique") {
           query = query.unique();
-          schema[name]["unique"] = true;
+          tables[tableName][name]["unique"] = true;
         } else if (part.startsWith("default")) {
           const value = part.split("=")[1];
           query = query.defaultTo(value);
 
-          schema[name]["default"] = value;
+          tables[tableName][name]["default"] = value;
         } else {
           console.log("not implemented: ", part);
         }
       }
+
+      resultLog +=
+        "(" +
+        (tables[tableName][name].field_name ?? name) +
+        ": " +
+        tables[tableName][name].type +
+        ") ";
     }
-    return true;
+    console.log(resultLog);
   });
-
-  async function getSchema(table) {
-    // return schema of table with name
-
-    if (await db.schema.hasTable("schema")) {
-      return db("schema").select("*").where({ table });
-    }
-  }
-
   if (!(await db.schema.hasTable("schema"))) {
     await db.schema.createTable("schema", (table) => {
       table.string("table");
@@ -105,15 +120,15 @@ export async function createTable(tableName, columns, db) {
     });
   }
 
+  console.log("insert into schema", tableName, tables[tableName]);
   await db("schema").insert({
     table: tableName,
-    schema: JSON.stringify(schema),
+    schema: JSON.stringify(tables[tableName]),
   });
 }
 
 export async function removeTable(name, db) {
-  
-  console.log('remove table: ', name)
+  console.log("remove table: ", name);
   await db.schema.dropTableIfExists(name);
 
   async function getSchema(table) {
@@ -125,7 +140,7 @@ export async function removeTable(name, db) {
   }
   const res = await getSchema(name);
 
-  if(!res[0]) {
+  if (!res[0]) {
     // other table removed before this
     return;
   }

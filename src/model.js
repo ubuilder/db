@@ -1,39 +1,51 @@
-let schema;
+export function getModel(tableName, db) {
+  if (!tableName) throw "tableName should be string";
+  if (!db) throw "database connection is not available";
 
-export class Model {
-  constructor(tableName, db) {
-    this.tableName = tableName;
-    this.db = db;
-  }
+  let schema;
 
-  async getSchema() {
+  async function getSchema() {
     if (!schema) {
-      let schemaList = await this.db("schema").select("*");
+      let schemaList = await db("schema").select("*");
 
       schema = {};
       schemaList.map((schem) => {
         schema[schem.table] = JSON.parse(schem.schema);
       });
-
-      return schema;
     }
+    return schema;
   }
 
-  async query(options = {}) {
-    const { select, sort, where = {}, page = 1, perPage = 10 } = options;
+  async function query(options = {}) {
+    const { where = {}, select = {}, page = 1, perPage = 10 } = options;
+    let query = db(tableName);
+    await getSchema();
 
-    /**
-     * @type {import('knex').Knex.QueryBuilder}
-     */
-    let query = this.db(this.tableName);
+    let querySelect;
+    if (Object.keys(select).length > 0) {
+      querySelect = [];
+      for (let key in schema[tableName]) {
+        if (select[key]) {
+          if (schema[tableName][key].type === "relation") {
+            if (schema[tableName][key].field_name)
+              querySelect.push(schema[tableName][key].field_name);
+          } else {
+            querySelect.push(key);
+          }
+        }
+      }
+      if (!querySelect.includes("id")) querySelect.unshift("id");
+    } else {
+      querySelect = "*";
+    }
+    query = query.select(querySelect);
 
-    await this.getSchema();
-
-    if (where) {
+    if (Object.keys(where).length > 0) {
       for (const key in where) {
         const value = where[key];
 
         if (typeof value === "object") {
+          console.log("object in where field is not valid...");
           break;
         }
 
@@ -61,25 +73,7 @@ export class Model {
       }
     }
 
-    let fields = [];
-
-    if (select) {
-      for (let field in schema[this.tableName]) {
-        if (schema[this.tableName][field].type === "relation") continue;
-        if (select[field]) {
-          fields.push(field);
-        }
-      }
-      if (!fields.includes("id")) fields.unshift("id");
-
-      query = query.select(fields);
-    } else {
-      query = query.select("*");
-    }
-
-    let currentPage = page ?? 1;
-    let itemsPerPage = perPage ?? 10;
-
+    let itemsPerPage = perPage;
     // Get the total number of rows in the database
     const totalRows = await query.clone().count("* as count").first();
     let total = totalRows.count;
@@ -89,84 +83,137 @@ export class Model {
       itemsPerPage = total;
     }
 
-    const offset = (currentPage - 1) * itemsPerPage;
+    const offset = (page - 1) * itemsPerPage;
     query = query.offset(offset).limit(itemsPerPage);
 
-    if (sort) {
-      query = query.orderBy(sort.column, sort.order);
-    }
-
     let data = await query;
+    console.log([schema]);
 
     data = await Promise.all(
       data.map(async (row) => {
-        for (let key in schema[this.tableName]) {
-          const value = schema[this.tableName][key];
+        for (let fieldName in schema[tableName]) {
+          const field = schema[tableName][fieldName];
 
-          if (value.type === "relation") {
-            const otherSchema = schema[value.table];
+          if (select[fieldName] && field.type === "relation") {
+            const otherSchema = schema[field.table];
 
-            let fieldName;
-            for (let field in otherSchema) {
+            const otherModel = getModel(field.table, db);
+
+            let otherFieldName;
+            for (let otherField in otherSchema) {
               if (
-                otherSchema[field].type === "relation" &&
-                otherSchema[field].table === this.tableName
+                otherSchema[otherField].type === "relation" &&
+                otherSchema[otherField].table === tableName
               ) {
-                fieldName = field;
+                otherFieldName = otherField;
               }
             }
 
-            const otherModel = new Model(value.table, this.db);
-            let filter = {};
-            if (otherSchema?.[fieldName]?.many) {
-              filter[fieldName] = {
-                id: row.id,
-              };
+            console.log(schema);
+            if (otherSchema[otherFieldName].many) {
+              row[fieldName] = await otherModel.get(row[field.field_name]);
             } else {
-              filter[fieldName] = row.id;
-            }
+              const otherQuery = await otherModel.query({
+                where: {
+                  [otherFieldName + "_id"]: row.id,
+                },
+                select: select[fieldName] ?? { [otherFieldName]: false },
+                perPage: 1000,
+                page: 1,
+              });
 
-            if (select?.[key]) {
-              row[key] = await otherModel
-                .query({
-                  where: filter,
-                  select: select[key] ?? {},
-                })
-                .then((res) => res.data);
-              if (!value.many) {
-                row[key] = row[key][0];
-              }
+              row[fieldName] = otherQuery.data;
             }
           }
         }
-
         return row;
       })
     );
 
     return {
       data,
-      total,
-      page: currentPage,
+      page,
       perPage: itemsPerPage,
+      total,
     };
   }
 
-  async insert(data) {
-    const result = await this.db(this.tableName).insert(data);
+  async function insert(data) {
+    await getSchema();
+
+    let rows;
+    if (Array.isArray(data)) {
+      rows = data;
+    } else {
+      rows = [data];
+    }
+
+    let payload = [];
+    for (let index in rows) {
+      const row = rows[index];
+      payload[index] = {};
+      console.log("INSERT: ", { tableName, row, schema });
+      for (let field in schema[tableName]) {
+        if (
+          schema[tableName][field].type === "relation" &&
+          !schema[tableName][field].many &&
+          row[schema[tableName][field].field_name]
+        ) {
+          //
+          payload[index][schema[tableName][field].field_name] =
+            row[schema[tableName][field].field_name];
+
+          console.log("testttttttt", { payload, row });
+          continue;
+        }
+        if (typeof row[field] !== "undefined") {
+          if (schema[tableName][field].type === "relation") {
+            if (row[field]) {
+              const otherSchema = getModel(schema[tableName][field].table, db);
+
+              const result = await otherSchema.insert(row[field]);
+
+              payload[index][schema[tableName][field].field_name] = result.id;
+            }
+          } else {
+            payload[index][field] = row[field];
+          }
+        }
+      }
+    }
+
+    const result = await db(tableName).insert(payload);
+
+    if (Array.isArray(data)) {
+      return data.map((d, index) => ({ id: result[index], ...d }));
+    } else {
+      return {
+        id: result[0],
+        ...data,
+      };
+    }
+  }
+  async function update(id, data) {
+    const result = await db(tableName).where({ id }).update(data);
+
     return result;
   }
 
-  async get(id) {
-    const [row] = await this.db(this.tableName).where({ id });
+  async function remove(id) {
+    await db(tableName).where({ id }).del();
+    return true;
+  }
+
+  async function get(id) {
+    const [row] = await db(tableName).where({ id });
     return row;
   }
 
-  async update(id, data) {
-    await this.db(this.tableName).where({ id }).update(data);
-  }
-
-  async remove(id) {
-    await this.db(this.tableName).where({ id }).del();
-  }
+  return {
+    query,
+    insert,
+    update,
+    remove,
+    get,
+  };
 }

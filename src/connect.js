@@ -1,4 +1,4 @@
-import { Model } from "./model.js";
+import { getModel } from "./model.js";
 import { createTable, removeTable } from "./table.js";
 import knex from "knex";
 
@@ -26,7 +26,7 @@ export function connect({
 
   return {
     getModel(tableName) {
-      return new Model(tableName, db);
+      return getModel(tableName, db);
     },
     createTable(tableName, columns) {
       return createTable(tableName, columns, db);
