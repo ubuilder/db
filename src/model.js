@@ -122,6 +122,8 @@ export function getModel(tableName, db) {
 
               row[fieldName] = otherQuery.data;
             }
+          } else if(field.type === 'boolean') {
+            row[fieldName] = !!row[fieldName]
           }
         }
         return row;
@@ -169,29 +171,32 @@ export function getModel(tableName, db) {
 
           continue;
         }
-        console.log(row[field]);
         if (typeof row[field] !== "undefined") {
           if (schema[tableName][field].type === "relation") {
             if (row[field]) {
               const otherSchema = getModel(schema[tableName][field].table, db);
 
-              console.log("row: ", row);
-              const result = await otherSchema.insert(row[field]);
+              if(typeof row[field] === 'number') {
+                payload[index][schema[tableName][field].field_name] = row[field];
+                // id of the field...
+              } else {
+                const result = await otherSchema.insert(row[field]);
 
-              console.log("result: ", result);
               if (!Array.isArray(result)) {
                 payload[index][schema[tableName][field].field_name] = result.id;
               }
             }
+
+            }
           } else {
-            console.log("in else", row[field]);
             payload[index][field] = row[field];
           }
         }
       }
     }
 
-    const result = await db(tableName).insert(payload);
+   const result = await db(tableName).insert(payload);
+
 
     if (Array.isArray(data)) {
       return data.map((d, index) => ({ id: result[index], ...d }));

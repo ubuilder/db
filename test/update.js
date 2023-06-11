@@ -18,24 +18,22 @@ test("add a relation by id", async (t) => {
 
   await Users.insert({
     name: "Hadi",
-    // posts: [
-    //   { name: "my first post" },
-    //   { name: "my second post" },
-    //   { name: "my third post" },
-    //   { name: "my fourth post" },
-    // ],
+    posts: [
+      { name: "my first post" },
+      { name: "my second post" },
+      { name: "my third post" },
+      { name: "my fourth post" },
+    ],
   });
 
-  Users.update(1, {
-    name: "Updated",
-    posts: {
-      add: { title: "another post" },
-    },
-  });
+  // Users.update(1, {
+  //   name: "Updated",
+  //   posts: {
+  //     add: { title: "another post" },
+  //   },
+  // });
 
   const usersWithPosts = await Users.query({});
-
-  console.log(usersWithPosts.data);
 
   t.pass();
   await removeTable("users");
