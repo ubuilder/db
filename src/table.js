@@ -8,13 +8,11 @@ function getPivotTableName(field1, field2) {
 
 export async function createTable(tableName, columns, db) {
   let resultLog = "create table: " + tableName + " ";
-  console.log(resultLog);
 
   let tables = {};
 
   if (await db.schema.hasTable("schema")) {
     const schema = db("schema").select("*");
-    console.log(schema);
 
     tables[schema.table] = schema.schema;
   }
@@ -22,7 +20,6 @@ export async function createTable(tableName, columns, db) {
   tables[tableName] = {};
 
   await db.schema.createTable(tableName, (table) => {
-    console.log("create table", tableName);
     let query;
     table.increments("id");
     tables[tableName]["id"] = { type: "id" };
@@ -62,7 +59,6 @@ export async function createTable(tableName, columns, db) {
               }
             }
 
-            console.log({ otherSchema, otherFieldName });
             if (otherSchema[otherFieldName].many) {
               const pivotTableName = getPivotTableName(relationName, tableName);
               // create pivot table.
@@ -104,12 +100,20 @@ export async function createTable(tableName, columns, db) {
         }
       }
 
-      resultLog +=
-        "(" +
-        (tables[tableName][name].field_name ?? name) +
-        ": " +
-        tables[tableName][name].type +
-        ") ";
+      if (
+        tables[tableName][name].type !== "relation" ||
+        (tables[tableName][name].type === "relation" &&
+          !tables[tableName][name].many)
+      ) {
+        resultLog +=
+          "(" +
+          (tables[tableName][name].field_name ?? name) +
+          ": " +
+          (tables[tableName][name].type === "relation"
+            ? "number"
+            : tables[tableName][name].type) +
+          ") ";
+      }
     }
     console.log(resultLog);
   });
@@ -120,7 +124,6 @@ export async function createTable(tableName, columns, db) {
     });
   }
 
-  console.log("insert into schema", tableName, tables[tableName]);
   await db("schema").insert({
     table: tableName,
     schema: JSON.stringify(tables[tableName]),

@@ -87,7 +87,6 @@ export function getModel(tableName, db) {
     query = query.offset(offset).limit(itemsPerPage);
 
     let data = await query;
-    console.log([schema]);
 
     data = await Promise.all(
       data.map(async (row) => {
@@ -109,7 +108,6 @@ export function getModel(tableName, db) {
               }
             }
 
-            console.log(schema);
             if (otherSchema[otherFieldName].many) {
               row[fieldName] = await otherModel.get(row[field.field_name]);
             } else {
@@ -152,8 +150,14 @@ export function getModel(tableName, db) {
     for (let index in rows) {
       const row = rows[index];
       payload[index] = {};
-      console.log("INSERT: ", { tableName, row, schema });
       for (let field in schema[tableName]) {
+        // if (
+        //   schema[tableName][field].type === "relation" &&
+        //   schema[tableName][field].many &&
+        //   Array.isArray(row[field])
+        // ) {
+        //   break;
+        // }
         if (
           schema[tableName][field].type === "relation" &&
           !schema[tableName][field].many &&
@@ -163,19 +167,24 @@ export function getModel(tableName, db) {
           payload[index][schema[tableName][field].field_name] =
             row[schema[tableName][field].field_name];
 
-          console.log("testttttttt", { payload, row });
           continue;
         }
+        console.log(row[field]);
         if (typeof row[field] !== "undefined") {
           if (schema[tableName][field].type === "relation") {
             if (row[field]) {
               const otherSchema = getModel(schema[tableName][field].table, db);
 
+              console.log("row: ", row);
               const result = await otherSchema.insert(row[field]);
 
-              payload[index][schema[tableName][field].field_name] = result.id;
+              console.log("result: ", result);
+              if (!Array.isArray(result)) {
+                payload[index][schema[tableName][field].field_name] = result.id;
+              }
             }
           } else {
+            console.log("in else", row[field]);
             payload[index][field] = row[field];
           }
         }
