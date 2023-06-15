@@ -19,7 +19,6 @@ test("should return object", async (t) => {
   t.deepEqual(query.total, 0);
   t.deepEqual(query.perPage, 0);
   t.deepEqual(query.data, []);
-
 });
 
 test("query should return data", async (t) => {
@@ -106,6 +105,71 @@ test("query select some fields", async (t) => {
   t.truthy(query.data[0].id); // id is always truthy
   t.falsy(query.data[0].test);
   t.truthy(query.data[0].name);
+});
+
+test("should select only specified fields", async (t) => {
+  await t.context.db.createTable("questions", {
+    title: "string",
+    answers: "answers[]",
+  });
+  await t.context.db.createTable("answers", {
+    value: "string",
+    question: "questions",
+    is_correct: "boolean",
+  });
+
+  const Questions = t.context.db.getModel("questions");
+
+  await Questions.insert({
+    title: "What is result of 2 + 2?",
+    answers: [
+      {
+        value: "3",
+        is_correct: false,
+      },
+      {
+        value: "4",
+        is_correct: true,
+      },
+      {
+        value: "5",
+        is_correct: false,
+      },
+      {
+        value: "2",
+        is_correct: false,
+      },
+    ],
+  });
+
+  const query = await Questions.query({
+    select: {
+      title: true,
+      answers: {
+        value: true,
+      },
+    },
+  });
+
+  t.deepEqual(query.page, 1);
+  t.deepEqual(query.total, 1);
+  t.deepEqual(query.perPage, 1);
+  t.deepEqual(query.data, [
+    {
+      id: 1,
+      title: "What is result of 2 + 2?",
+      answers: [
+        { id: 1, value: "3" },
+        { id: 2, value: "4" },
+        { id: 3, value: "5" },
+        { id: 4, value: "2" },
+      ],
+    },
+  ]);
+
+  t.truthy(query.data[0].id); // id is always truthy
+  t.truthy(query.data[0].answers[0]);
+  t.deepEqual(query.data[0].answers[0].is_correct, undefined);
 });
 
 test("query page 2", async (t) => {
@@ -236,4 +300,3 @@ test("relationship", async (t) => {
   await t.context.db.removeTable("users");
   await t.context.db.removeTable("other");
 });
-

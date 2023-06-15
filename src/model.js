@@ -1,3 +1,5 @@
+import { getPivotTableName } from "./table.js";
+
 export function getModel(tableName, db) {
   if (!tableName) throw "tableName should be string";
   if (!db) throw "database connection is not available";
@@ -125,7 +127,11 @@ export function getModel(tableName, db) {
               // skip relations in query (todo: depth support)
             }
           } else if (field.type === "boolean") {
-            row[fieldName] = !!row[fieldName];
+            if (row[fieldName] === 1) {
+              row[fieldName] = true;
+            } else if (row[fieldName] === 0) {
+              row[(fieldName = false)];
+            }
           } else {
             // do not change to query result
           }
@@ -169,13 +175,9 @@ export function getModel(tableName, db) {
         const field = schema[tableName][fieldName];
 
         if (field.type === "relation") {
-          console.log(fieldName, field.many);
           if (field.many) {
-            // skip for now
             continue;
           }
-          //
-          // first of all do not supoort arrays
           if (row[field.field_name]) {
             payload[index][field.field_name] = row[field.field_name];
             // id
@@ -214,17 +216,16 @@ export function getModel(tableName, db) {
               schema[field.table][otherField].table === tableName
             ) {
               otherFieldName = schema[field.table][otherField].field_name;
+              if (!otherFieldName) {
+                // console.log(
+                //   "many to many",
+                //   getPivotTableName(tableName, field.table),
+                //   otherField + "_id",
+                //   fieldName + "_id"
+                // );
+              }
             }
           }
-          console.log({
-            result,
-            otherFieldName,
-            tableName,
-            fieldName,
-            field,
-            schema,
-            row,
-          });
 
           if (Array.isArray(row[fieldName]) && row[fieldName].length > 0) {
             if (typeof row[fieldName]?.[0] === "object") {
@@ -233,19 +234,13 @@ export function getModel(tableName, db) {
                 [otherFieldName]: result[index],
               }));
 
-              console.log({ otherRows });
               await model.insert(otherRows);
             } else {
               for (let id of row[fieldName]) {
-                console.log(id, {
-                  [otherFieldName]: result[index],
-                });
                 await model.update(id, {
                   [otherFieldName]: result[index],
                 });
               }
-              // update
-              console.log("update other model", row);
             }
           }
         }
