@@ -1,4 +1,4 @@
-function getPivotTableName(field1, field2) {
+export function getPivotTableName(field1, field2) {
   if (field1 > field2) {
     return `pivot_${field1}_${field2}`;
   } else {
@@ -12,9 +12,12 @@ export async function createTable(tableName, columns, db) {
   let tables = {};
 
   if (await db.schema.hasTable("schema")) {
-    const schema = db("schema").select("*");
+    const schema = await db("schema").select("*");
 
-    tables[schema.table] = schema.schema;
+    for (let schem of schema) {
+      tables[schem.table] = JSON.parse(schem.schema);
+    }
+    console.log(tables);
   }
 
   tables[tableName] = {};
@@ -48,8 +51,10 @@ export async function createTable(tableName, columns, db) {
           relationName = type.replace("[]", "");
           tables[tableName][name]["table"] = relationName;
 
+          console.log("many", { tables });
+
           if (tables[relationName]) {
-            const otherSchema = tables(relationName);
+            const otherSchema = tables[relationName];
 
             let otherFieldName;
             for (let key in otherSchema) {
@@ -59,6 +64,7 @@ export async function createTable(tableName, columns, db) {
               }
             }
 
+            console.log(otherSchema);
             if (otherSchema[otherFieldName].many) {
               const pivotTableName = getPivotTableName(relationName, tableName);
               // create pivot table.
