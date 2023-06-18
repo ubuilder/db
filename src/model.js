@@ -199,10 +199,19 @@ export function getModel(tableName, db) {
       }
     }
 
-    const result = await db(tableName).insert(payload);
+    console.log("payload: ", payload);
+    const result = await Promise.all(
+      payload.map((p) =>
+        db(tableName)
+          .insert(p)
+          .then((res) => res[0])
+      )
+    );
+    console.log({ result });
 
     for (let index in rows) {
       const row = rows[index];
+      console.log("after insert", { row });
       for (let fieldName in schema[tableName]) {
         const field = schema[tableName][fieldName];
 

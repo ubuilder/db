@@ -211,3 +211,122 @@ test("insert with relation (multiple id)", async (t) => {
   await t.context.db.removeTable("users");
   await t.context.db.removeTable("posts");
 });
+
+test("insert with relation (multiple array)", async (t) => {
+  await t.context.db.createTable("posts", {
+    creator: "users",
+    body: "string",
+    title: "string",
+  });
+
+  await t.context.db.createTable("users", {
+    username: "string",
+    posts: "posts[]",
+    name: "string",
+  });
+
+  const Users = t.context.db.getModel("users");
+  const Posts = t.context.db.getModel("Posts");
+
+  await Users.insert([
+    {
+      name: "Hadi",
+      username: "hadi",
+      posts: [
+        { body: "This is first body", title: "Post title #1" },
+        { body: "This is second body", title: "Post title #2" },
+      ],
+    },
+    {
+      name: "Edriss",
+      username: "edriss",
+      posts: [
+        { body: "This is edriss first body", title: "Post title #1" },
+        { body: "This is edriss second body", title: "Post title #2" },
+      ],
+    },
+    {
+      name: "Jawad",
+      username: "jawad",
+      posts: [
+        { body: "This is jawad first body", title: "Post title #1" },
+        { body: "This is jawad second body", title: "Post title #2" },
+      ],
+    },
+  ]);
+
+  const users = await Users.query({
+    select: {
+      name: true,
+      username: true,
+      posts: true,
+    },
+  });
+
+  t.deepEqual(users.data.length, 3);
+  t.deepEqual(users.data[0], {
+    id: 1,
+    name: "Hadi",
+    username: "hadi",
+    posts: [
+      {
+        id: 1,
+        creator_id: 1,
+        body: "This is first body",
+        title: "Post title #1",
+      },
+      {
+        id: 2,
+        creator_id: 1,
+        body: "This is second body",
+        title: "Post title #2",
+      },
+    ],
+  });
+  t.deepEqual(users.data[1], {
+    id: 2,
+    name: "Edriss",
+    username: "edriss",
+    posts: [
+      {
+        id: 3,
+        creator_id: 2,
+        body: "This is edriss first body",
+        title: "Post title #1",
+      },
+      {
+        id: 4,
+        creator_id: 2,
+        body: "This is edriss second body",
+        title: "Post title #2",
+      },
+    ],
+  });
+
+  t.deepEqual(users.data[2], {
+    id: 3,
+    name: "Jawad",
+    username: "jawad",
+    posts: [
+      {
+        id: 5,
+        creator_id: 3,
+        body: "This is jawad first body",
+        title: "Post title #1",
+      },
+      {
+        id: 6,
+        creator_id: 3,
+        body: "This is jawad second body",
+        title: "Post title #2",
+      },
+    ],
+  });
+
+  const posts = await Posts.query();
+
+  t.deepEqual(posts.data.length, 6);
+
+  await t.context.db.removeTable("users");
+  await t.context.db.removeTable("posts");
+});
