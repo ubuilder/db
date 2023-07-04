@@ -22,7 +22,7 @@ export async function createTable(tableName, columns, db) {
 
   tables[tableName] = {};
 
-  await db.schema.createTable(tableName, (table) => {
+  await db.schema.createTable(tableName, async (table) => {
     let query;
     table.increments("id");
     tables[tableName]["id"] = { type: "id" };
@@ -72,7 +72,7 @@ export async function createTable(tableName, columns, db) {
                 name + "_id",
                 otherFieldName + "_id",
               ]);
-              db.schema.createTable(pivotTableName, (builder) => {
+              await db.schema.createTable(pivotTableName, (builder) => {
                 builder.integer(name + "_id").references(relationName + ".id");
                 builder
                   .integer(otherFieldName + "_id")

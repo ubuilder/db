@@ -2,6 +2,9 @@ import { getModel } from "./model.js";
 import { createTable, removeTable } from "./table.js";
 import knex from "knex";
 
+/**
+ * @type {import('../index.d').ConnectType} 
+ */
 export function connect({
   client = "sqlite3",
   filename = ":memory:",
