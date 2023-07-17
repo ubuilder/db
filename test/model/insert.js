@@ -38,49 +38,56 @@ test("insert with relations", async (t) => {
 
   await t.context.db.createTable("users", {
     username: "string",
-    posts: "posts[]",
     name: "string",
   });
 
   const Posts = t.context.db.getModel("posts");
+  const Users = t.context.db.getModel('users');
 
-  await Posts.insert({
+  const [userId] = await Users.insert({
+    name: 'Hadi',
+    username: 'hadi'
+  })
+
+  const [post1Id]  = await Posts.insert({
     body: "This is body",
     title: "Post title",
-    creator: {
-      // id will be 1
-      name: "Hadi",
-      username: "hadi",
-    },
+    creator_id: userId,
   });
-  await Posts.insert({
+
+  const [post2Id]  =await Posts.insert({
     body: "This is another post",
     title: "Post title 2",
-    creator_id: 1,
+    creator_id: userId,
   });
 
-  const Users = t.context.db.getModel("users");
-
   const users = await Users.query({
+    with: {
+      posts: {
+        table: 'posts',
+        field: 'creator_id',
+        multiple: true,
+        select: {
+          body: true,
+          title: true
+        }
+      },
+    },
     select: {
       name: true,
       username: true,
-      posts: {
-        body: true,
-        title: true,
-      },
-    },
+    }
     //
   });
 
   t.deepEqual(users.data.length, 1);
   t.deepEqual(users.data[0], {
-    id: 1,
+    id: userId,
     name: "Hadi",
     username: "hadi",
     posts: [
-      { id: 1, body: "This is body", title: "Post title" },
-      { id: 2, body: "This is another post", title: "Post title 2" },
+      { id: post1Id, body: "This is body", title: "Post title" },
+      { id: post2Id, body: "This is another post", title: "Post title 2" },
     ],
   });
 
@@ -97,45 +104,56 @@ test("insert with relation (array)", async (t) => {
 
   await t.context.db.createTable("users", {
     username: "string",
-    posts: "posts[]",
     name: "string",
   });
 
   const Users = t.context.db.getModel("users");
   const Posts = t.context.db.getModel("Posts");
 
-  await Users.insert({
+  const [userId] = await Users.insert({
     name: "Hadi",
     username: "hadi",
-    posts: [
-      { body: "This is first body", title: "Post title #1" },
-      { body: "This is second body", title: "Post title #2" },
-    ],
+    // posts: [
+    // ],
   });
+
+  const [post1Id] = await Posts.insert({
+     body: "This is first body", title: "Post title #1", creator_id: userId 
+  })
+  const [post2Id] = await Posts.insert({
+ body: "This is second body", title: "Post title #2", creator_id: userId
+ })
+
 
   const users = await Users.query({
     select: {
       name: true,
       username: true,
-      posts: true,
     },
+    with: {
+      posts: {
+        table: 'posts',
+        field: 'creator_id',
+        multiple: true,
+      }
+    }
   });
 
   t.deepEqual(users.data.length, 1);
   t.deepEqual(users.data[0], {
-    id: 1,
+    id: userId,
     name: "Hadi",
     username: "hadi",
     posts: [
       {
-        id: 1,
-        creator_id: 1,
+        id: post1Id,
+        creator_id: userId,
         body: "This is first body",
         title: "Post title #1",
       },
       {
-        id: 2,
-        creator_id: 1,
+        id: post2Id,
+        creator_id: userId,
         body: "This is second body",
         title: "Post title #2",
       },
@@ -166,47 +184,52 @@ test("insert with relation (multiple id)", async (t) => {
   const Users = t.context.db.getModel("users");
   const Posts = t.context.db.getModel("posts");
 
-  await Posts.insert([
-    { body: "description of first post", title: "post #1" },
-    { body: "description of second post", title: "post #2" },
-    { body: "description of third post", title: "post #3" },
-  ]);
-
-  await Users.insert({
+  const [uId] = await Users.insert({
     name: "Hadi",
     username: "hadi",
-    posts: [1, 3],
   });
+
+  const [p1, p2, p3] = await Posts.insert([
+    { body: "description of first post", title: "post #1", creator_id: uId },
+    { body: "description of second post", title: "post #2" },
+    { body: "description of third post", title: "post #3", creator_id: uId },
+  ]);
+
 
   const posts = await Posts.query({
     select: {
-      creator: true,
       title: true,
+      creator_id: true
     },
+    with: {
+      creator: {
+        table: 'users',
+        field: 'creator_id'
+      }
+    }
   });
 
   t.deepEqual(posts.data, [
     {
-      id: 1,
+      id: p1,
       title: "post #1",
-      creator_id: 1,
-      creator: { id: 1, name: "Hadi", username: "hadi" },
+      creator_id: uId,
+      creator: { id: uId, name: "Hadi", username: "hadi" },
     },
     {
-      id: 2,
+      id: p2,
       title: "post #2",
       creator_id: null,
     },
     {
-      id: 3,
+      id: p3,
       title: "post #3",
-      creator_id: 1,
-      creator: { id: 1, name: "Hadi", username: "hadi" },
+      creator_id: uId,
+      creator: { id: uId, name: "Hadi", username: "hadi" },
     },
   ]);
 
   const users = await Users.query({});
-  console.log(users);
 
   await t.context.db.removeTable("users");
   await t.context.db.removeTable("posts");
@@ -228,75 +251,78 @@ test("insert with relation (multiple array)", async (t) => {
   const Users = t.context.db.getModel("users");
   const Posts = t.context.db.getModel("Posts");
 
-  await Users.insert([
+  const uIds = await Users.insert([
     {
       name: "Hadi",
       username: "hadi",
-      posts: [
-        { body: "This is first body", title: "Post title #1" },
-        { body: "This is second body", title: "Post title #2" },
-      ],
     },
     {
       name: "Edriss",
       username: "edriss",
-      posts: [
-        { body: "This is edriss first body", title: "Post title #1" },
-        { body: "This is edriss second body", title: "Post title #2" },
-      ],
     },
     {
       name: "Jawad",
       username: "jawad",
-      posts: [
-        { body: "This is jawad first body", title: "Post title #1" },
-        { body: "This is jawad second body", title: "Post title #2" },
-      ],
     },
   ]);
+
+  const postIds = await Posts.insert([
+    { body: "This is first body", title: "Post title #1", creator_id: uIds[0] },
+    { body: "This is second body", title: "Post title #2", creator_id: uIds[0] },
+    { body: "This is edriss first body", title: "Post title #1", creator_id: uIds[1] },
+    { body: "This is edriss second body", title: "Post title #2", creator_id: uIds[1] },
+    { body: "This is jawad first body", title: "Post title #1", creator_id: uIds[2]},
+    { body: "This is jawad second body", title: "Post title #2", creator_id: uIds[2]},
+  ])
 
   const users = await Users.query({
     select: {
       name: true,
       username: true,
-      posts: true,
     },
+    with: {
+      posts: {
+        table: 'posts',
+        field: 'creator_id',
+        multiple: true
+      }
+    }
   });
 
   t.deepEqual(users.data.length, 3);
   t.deepEqual(users.data[0], {
-    id: 1,
+    id: uIds[0],
     name: "Hadi",
     username: "hadi",
     posts: [
       {
-        id: 1,
-        creator_id: 1,
+        id: postIds[0],
+        creator_id: uIds[0],
         body: "This is first body",
         title: "Post title #1",
       },
       {
-        id: 2,
-        creator_id: 1,
+        id: postIds[1],
+        creator_id: uIds[0],
         body: "This is second body",
         title: "Post title #2",
       },
     ],
   });
   t.deepEqual(users.data[1], {
-    id: 2,
+    id: uIds[1],
     name: "Edriss",
     username: "edriss",
     posts: [
       {
-        id: 3,
-        creator_id: 2,
+        id: postIds[2],
+        creator_id: uIds[1],
         body: "This is edriss first body",
         title: "Post title #1",
       },
       {
-        id: 4,
-        creator_id: 2,
+        id: postIds[3],
+        creator_id: uIds[1],
         body: "This is edriss second body",
         title: "Post title #2",
       },
@@ -304,19 +330,19 @@ test("insert with relation (multiple array)", async (t) => {
   });
 
   t.deepEqual(users.data[2], {
-    id: 3,
+    id: uIds[2],
     name: "Jawad",
     username: "jawad",
     posts: [
       {
-        id: 5,
-        creator_id: 3,
+        id: postIds[4],
+        creator_id: uIds[2],
         body: "This is jawad first body",
         title: "Post title #1",
       },
       {
-        id: 6,
-        creator_id: 3,
+        id: postIds[5],
+        creator_id: uIds[2],
         body: "This is jawad second body",
         title: "Post title #2",
       },

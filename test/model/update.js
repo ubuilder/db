@@ -16,15 +16,15 @@ test("update", async (t) => {
     const users = t.context.usersModel;
   
     await users.insert({ name: "test-user", test: "this is test1" });
-    await users.insert({ name: "test-user", test: "this is test4" });
+    const [id] = await users.insert({ name: "test-user", test: "this is test4" });
     await users.insert({ name: "test-user", test: "this is test3" });
   
-    await users.update(2, { name: "updated name" });
+    await users.update(id, { name: "updated name" });
   
-    const query = await users.query({ where: { id: 2 } });
+    const query = await users.query({ where: { id } });
   
     t.deepEqual(query.data, [
-      { id: 2, name: "updated name", test: "this is test4" },
+      { id, name: "updated name", test: "this is test4" },
     ]);
     t.deepEqual(query.page, 1);
     t.deepEqual(query.perPage, 1);

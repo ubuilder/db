@@ -50,9 +50,8 @@ test.skip("Many to many relationship", async (t) => {
   const users = Users.query({ select: { name: true, groups: true } });
   const groups = Users.query({ select: { name: true, users: true } });
 
-  console.log({ users });
-  console.log({ groups });
 
+  
   t.pass();
   //   Users.update(1, {groups: []})
 });

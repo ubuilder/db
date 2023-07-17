@@ -45,7 +45,7 @@ test("query should filter data ", async (t) => {
 
   const query = await users.query({
     where: {
-      name: "n:like",
+      name: { operator: "like", value: "n" },
     },
   });
 
@@ -67,8 +67,8 @@ test("query should filter data (AND)", async (t) => {
 
   const query = await users.query({
     where: {
-      name: "n:like",
-      test: "test:like",
+      name: { operator: "like", value: "n" },
+      test: { operator: "like", value: "test" },
     },
   });
 
@@ -84,13 +84,13 @@ test("query select some fields", async (t) => {
   const users = t.context.usersModel;
 
   await users.insert({ name: "test-user", test: "this is test" });
-  await users.insert({ name: "another-user", test: "test test" });
+  const [id] = await users.insert({ name: "another-user", test: "test test" });
   await users.insert({ name: "new", test: "abc" });
 
   const query = await users.query({
     where: {
-      name: "n:like",
-      test: "test:like",
+      name: { operator: "like", value: "n" },
+      test: { operator: "like", value: "test" },
     },
     select: {
       name: true,
@@ -100,7 +100,7 @@ test("query select some fields", async (t) => {
   t.deepEqual(query.page, 1);
   t.deepEqual(query.total, 1);
   t.deepEqual(query.perPage, 1);
-  t.like(query.data, [{ name: "another-user" }]);
+  t.deepEqual(query.data, [{ id, name: "another-user" }]);
 
   t.truthy(query.data[0].id); // id is always truthy
   t.falsy(query.data[0].test);
@@ -110,7 +110,6 @@ test("query select some fields", async (t) => {
 test("should select only specified fields", async (t) => {
   await t.context.db.createTable("questions", {
     title: "string",
-    answers: "answers[]",
   });
   await t.context.db.createTable("answers", {
     value: "string",
@@ -119,34 +118,47 @@ test("should select only specified fields", async (t) => {
   });
 
   const Questions = t.context.db.getModel("questions");
+  const Answers = t.context.db.getModel("answers");
 
-  await Questions.insert({
+  const [qId] = await Questions.insert({
     title: "What is result of 2 + 2?",
-    answers: [
-      {
-        value: "3",
-        is_correct: false,
-      },
-      {
-        value: "4",
-        is_correct: true,
-      },
-      {
-        value: "5",
-        is_correct: false,
-      },
-      {
-        value: "2",
-        is_correct: false,
-      },
-    ],
   });
+
+  const ids = await Answers.insert([
+    {
+      question_id: qId,
+      value: "3",
+      is_correct: false,
+    },
+    {
+      question_id: qId,
+      value: "4",
+      is_correct: true,
+    },
+    {
+      question_id: qId,
+      value: "5",
+      is_correct: false,
+    },
+    {
+      question_id: qId,
+      value: "2",
+      is_correct: false,
+    },
+  ]);
 
   const query = await Questions.query({
     select: {
       title: true,
+    },
+    with: {
       answers: {
-        value: true,
+        table: "answers",
+        field: "question_id",
+        multiple: true,
+        select: {
+          value: true,
+        },
       },
     },
   });
@@ -156,13 +168,13 @@ test("should select only specified fields", async (t) => {
   t.deepEqual(query.perPage, 1);
   t.deepEqual(query.data, [
     {
-      id: 1,
+      id: qId,
       title: "What is result of 2 + 2?",
       answers: [
-        { id: 1, value: "3" },
-        { id: 2, value: "4" },
-        { id: 3, value: "5" },
-        { id: 4, value: "2" },
+        { id: ids[0], value: "3" },
+        { id: ids[1], value: "4" },
+        { id: ids[2], value: "5" },
+        { id: ids[3], value: "2" },
       ],
     },
   ]);
@@ -230,7 +242,6 @@ test("relationship", async (t) => {
   await t.context.db.createTable("users", {
     name: "string",
     test: "string",
-    others: "other[]",
   });
 
   await t.context.db.createTable("other", {
@@ -242,35 +253,51 @@ test("relationship", async (t) => {
   const users = t.context.db.getModel("users");
   const other = t.context.db.getModel("other");
 
-  await users.insert({ name: "test-user", test: "this is test1" });
-  await users.insert({ name: "test-user", test: "this is test4" });
-  await users.insert({ name: "test-user", test: "this is test3" });
+  const [u1Id] = await users.insert({
+    name: "test-user",
+    test: "this is test1",
+  });
+  const [u2Id] = await users.insert({
+    name: "test-user",
+    test: "this is test4",
+  });
+  const [u3Id] = await users.insert({
+    name: "test-user",
+    test: "this is test3",
+  });
   await other.insert({
     name: "first other",
     description: "first description",
-    creator_id: 1,
+    creator_id: u1Id,
   });
   await other.insert({
     name: "second other",
     description: "second description",
-    creator_id: 2,
+    creator_id: u2Id,
   });
   await other.insert({
     name: "third other",
     description: "third description",
-    creator_id: 1,
+    creator_id: u1Id,
   });
   await other.insert({
     name: "fourth other",
     description: "fourth description",
-    creator_id: 2,
+    creator_id: u2Id,
   });
 
   const query = await users.query({
     select: {
       name: true,
+    },
+    with: {
       others: {
-        name: true,
+        table: "other",
+        field: "creator_id",
+        multiple: true,
+        select: {
+          name: true,
+        },
       },
     },
   });
@@ -285,11 +312,21 @@ test("relationship", async (t) => {
   const query2 = await other.query({
     select: {
       name: true,
+      creator_id: true,
+    },
+    with: {
       creator: {
-        name: true,
+        table: "users",
+        field: "creator_id",
+        select: {
+          name: true,
+          test: true
+        },
       },
     },
   });
+
+  console.log(query2.data)
 
   t.truthy(query2.data[0].creator);
   t.truthy(query2.data[0].name);

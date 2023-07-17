@@ -20,7 +20,7 @@ test("remove", async (t) => {
   
     await users.remove(2);
   
-    const query = await users.query({ where: { id: 2 } });
+    const query = await users.query({ where: { id: {operator: '=', value: 2} } });
   
     t.deepEqual(query.data, []);
     t.deepEqual(query.page, 1);

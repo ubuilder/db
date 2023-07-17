@@ -6,7 +6,6 @@ test("add a relation by id", async (t) => {
 
   await createTable("users", {
     name: "string",
-    posts: "posts[]",
   });
 
   await createTable("posts", {
@@ -15,30 +14,49 @@ test("add a relation by id", async (t) => {
   });
 
   const Users = getModel("users");
+  const Posts = getModel("posts");
 
-  await Users.insert({
+
+  const [uId] = await Users.insert({
     name: "Hadi",
-    posts: [
-      { name: "my first post" },
-      { name: "my second post" },
-      { name: "my third post" },
-      { name: "my fourth post" },
-    ],
   });
 
-  // Users.update(1, {
-  //   name: "Updated",
-  //   posts: {
-  //     add: { title: "another post" },
-  //   },
-  // });
+  await Posts.insert([
+    { title: "my first post", creator_id: uId },
+    { title: "my second post", creator_id: uId },
+    { title: "my third post", creator_id: uId },
+    { title: "my fourth post", creator_id: uId },
+  ])
 
-  const usersWithPosts = await Users.query({});
+  await Users.update(uId, {
+    name: "Updated",
+    // posts: {
+    //   add: { title: "another post" },
+    // },
+  });
 
-  t.pass();
+  await Posts.insert({
+    title: 'another post',
+    creator_id: uId
+  })
+
+  const usersWithPosts = await Users.query({
+    with: {
+      the_posts: {
+        table: 'posts',
+        field: 'creator_id',
+        multiple: true
+      }
+    }
+  });
+
+  t.deepEqual(usersWithPosts.data.length, 1);
+  t.deepEqual(usersWithPosts.data[0].the_posts.length, 5);
+
   await removeTable("users");
   await removeTable("posts");
 });
+
 test.todo("add a relation");
 test.todo("update a relation's value");
 test.todo("remove relation");

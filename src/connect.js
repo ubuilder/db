@@ -1,4 +1,4 @@
-import { getModel } from "./model.js";
+import { getModel } from "./model/model.js";
 import { createTable, removeTable } from "./table.js";
 import knex from "knex";
 
