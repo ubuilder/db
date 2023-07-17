@@ -17,12 +17,12 @@ test("get by id", async (t) => {
   
     await users.insert({ name: "test-user", test: "this is test1" });
     await users.insert({ name: "test-user", test: "this is test4" });
-    await users.insert({ name: "test-user", test: "this is test3" });
+    const [id3] = await users.insert({ name: "test-user", test: "this is test3" });
   
-    const user = await users.get(3);
+    const user = await users.get({where: {id: id3}});
   
     t.deepEqual(user.test, "this is test3");
     t.deepEqual(user.name, "test-user");
-    t.deepEqual(user.id, 3);
+    t.deepEqual(user.id, id3);
   });
   

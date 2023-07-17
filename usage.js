@@ -33,10 +33,13 @@ const id2 = await getModel("post").insert({
 });
 
 const result = await getModel('post').query({
-  preloads: {
+  with: {
     the_creator: {
       table: "user",
       field: "creator_id",
+      select: {
+        age: true
+      }
     },
   },
   // where: {

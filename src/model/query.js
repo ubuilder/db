@@ -24,7 +24,7 @@ function query_where(query, { where }) {
     for (const key in where) {
       let value;
       let operator;
-      if (typeof where[key] === "object") {
+      if (where[key] && typeof where[key] === "object") {
         value = where[key].value;
         operator = where[key].operator;
       } else {
@@ -79,83 +79,42 @@ function query_sort(query, { sort }) {
   return query;
 }
 
-async function query_map_data(
-  data,
-  { schema, tableName, preloads, select, db }
-) {
+async function query_map_data(data, { preloads, db }) {
   for (let fieldName in data) {
     for (let key in preloads) {
       const {
         table,
         field,
+        select: select2,
         where: where2,
-        preloads: preloads2,
+        with: with2,
       } = preloads[key];
 
       if (preloads[key].multiple) {
         const result = await query_function(
           {
-            select: select[key],
+            select: select2,
             where: { ...where2, [field]: data.id },
-            preloads: preloads2,
+            with: with2,
+            page: 1,
+            perPage: 1000,
           },
           { tableName: table, db }
         );
         data[key] = result.data;
       } else {
-        // single
-        console.log(data[field], table)
-        data[key] = await get(data[field], {tableName: table, db})
+
+        if(data[field]) {
+
+            data[key] = await get(
+            { where: { ...where2, id: data[field] }, select: select2, with: with2 },
+            { tableName: table, db }
+            );
+        } 
+
       }
     }
-    // if (field.type === "relation") {
-    //   if (preloads[fieldName]) {
-    //     console.log({ schema, fieldName });
-    //     let otherSchema = schema[field.table];
 
-    //     let otherFieldName;
-    //     for (let otherField in otherSchema) {
-    //       if (
-    //         otherSchema[otherField].type === "relation" &&
-    //         otherSchema[otherField].table === tableName
-    //       ) {
-    //         otherFieldName = otherField;
-    //       }
-    //     }
-    //     console.log(
-    //       { otherFieldName },
-    //       otherSchema[otherFieldName].many,
-    //       data[field.field_name]
-    //     );
-
-    //     // console.log(otherSchema[otherFieldName], {data, fieldName})
-    //     if (otherSchema[otherFieldName].many) {
-    //       console.log("is many" , data);
-    //     } else {
-    //       console.log("is not many", data);
-    //     }
-    //     //     console.log(data, data[field.field_name])
-    //     //   data[fieldName] = await get(data[field.field_name], {
-    //     //     tableName: field.table,
-    //     //     db,
-    //     //   });
-    //     // } else {
-    //     //   data[fieldName] = await query_function(
-    //     //     {
-    //     //       where: {
-    //     //         [otherFieldName + "_id"]: data.id,
-    //     //       },
-    //     //       select: select[fieldName] ?? { [otherFieldName]: false },
-    //     //       preloads: typeof preloads[fieldName] === 'object' ? preloads[fieldName] : {},
-    //     //       perPage: 1000,
-    //     //       page: 1,
-    //     //     },
-    //     //     { tableName: field.table, db }
-    //     //   ).then((res) => res.data);
-    //     // }
-    //   } else {
-    //     // skip relations in query (todo: depth support)
-    //   }
     // } else if (field.type === "boolean") {
     //   if (data[fieldName] === 1) {
     //     data[fieldName] = true;
@@ -176,14 +135,14 @@ export async function query_function(options = {}, { tableName, db }) {
   const {
     where = {},
     select = {},
-    preloads = {},
+    with: preloads = {},
     sort = {},
     page = 1,
     perPage = 10,
   } = options;
   let query = db(tableName);
 
-  query = query_select(query, { select, tableName });
+  query = query_select(query, { select });
 
   query = query_where(query, { where });
 
@@ -197,13 +156,10 @@ export async function query_function(options = {}, { tableName, db }) {
   });
 
   let data = await paginate_result.query;
-  console.log("raw data: ", data);
 
   data = await Promise.all(
     data.map(async (row) => {
-      console.log("query map data", row, preloads);
       row = await query_map_data(row, { select, preloads, tableName, db });
-      console.log("result: ", row);
       return row;
     })
   );
