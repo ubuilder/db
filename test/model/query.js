@@ -149,6 +149,9 @@ test("should select only specified fields", async (t) => {
         value: true,
       },
     },
+    preloads: {
+      answers: true
+    }
   });
 
   t.deepEqual(query.page, 1);
@@ -273,6 +276,9 @@ test("relationship", async (t) => {
         name: true,
       },
     },
+    preloads: {
+      others: true
+    }
   });
 
   t.truthy(query.data[0].others);
@@ -283,12 +289,15 @@ test("relationship", async (t) => {
   t.falsy(query.data[0].others[0].description);
 
   const query2 = await other.query({
-    select: {
-      name: true,
-      creator: {
-        name: true,
-      },
-    },
+    // select: {
+    //   name: true,
+    //   creator: {
+    //     name: true,
+    //   },
+    // },
+    preloads: {
+      creator: true
+    }
   });
 
   t.truthy(query2.data[0].creator);

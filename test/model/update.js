@@ -21,7 +21,7 @@ test("update", async (t) => {
   
     await users.update(2, { name: "updated name" });
   
-    const query = await users.query({ where: { id: 2 } });
+    const query = await users.query({ where: { id: {operator: '=', value: 2} } });
   
     t.deepEqual(query.data, [
       { id: 2, name: "updated name", test: "this is test4" },
