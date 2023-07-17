@@ -1,12 +1,10 @@
-export async function createTable(tableName, columns, db) {
-  await db.schema.createTable(tableName, table => {
-    table.uuid("id");
-    let query;
-    
-    for(let name in columns) {
-      const value = columns[name].split("|");
+import knex from "knex";
 
+function addColumn(builder, name, column) {
+  const value = column.split("|");
       const type = value.shift();
+
+      let query;
        
       if(type === 'number') {
         query = table.integer(name)
@@ -35,6 +33,14 @@ export async function createTable(tableName, columns, db) {
           console.log("not implemented: ", part);
         }
       }
+}
+
+export async function createTable(tableName, columns, db) {
+  await db.schema.createTable(tableName, table => {
+    table.uuid("id");
+    
+    for(let name in columns) {
+      addColumn(table, name, columns[name])
     }
   }) 
 }
@@ -44,6 +50,33 @@ export async function removeTable(tableName, db) {
   await db.schema.dropTableIfExists(tableName);
 }
 
+export async function addColumns(tableName, columns, db) {
+  await db.schema.alterTable(tableName, builder => {
+    for(let name in columns) {
+      addColumn(builder, name, columns[name])
+    }
+  })
+}
+
+export async function removeColumns(tableName, names, db) {
+  await db.schema.alterTable(tableName, builder => {
+    for(let name in names) {
+      builder.dropColumn(name)
+    }
+  })
+}
+
+export async function updateColumn(tableName, columnName, {name, type}, db) {
+
+  await db.schema.alterTable(tableName, builder => {
+    builder.dropColumn(columnName)
+    addColumn(builder, name, type);
+  })
+}
+
+export async function renameTable(tableName, name, db) {
+  await db.schema.renameTable(tableName, name)
+}
 
 // export async function createTable(tableName, columns, db) {
 //   let resultLog = "create table: " + tableName + " ";
