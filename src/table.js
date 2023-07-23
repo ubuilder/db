@@ -7,15 +7,15 @@ function addColumn(builder, name, column) {
       let query;
        
       if(type === 'number') {
-        query = table.integer(name)
+        query = builder.integer(name)
       } else if(type === 'string') {
-        query = table.text(name)
+        query = builder.text(name)
       } else if(type === 'boolean') {
-        query = table.boolean(name)
+        query = builder.boolean(name)
       } else {
         if(type.indexOf('[]') === -1) {
         // 'creator': "user"
-        query = table.integer(name + "_id").references(type + ".id");
+        query = builder.integer(name + "_id").references(type + ".id");
 
         }
 
