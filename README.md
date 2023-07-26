@@ -32,9 +32,23 @@ $
 ```
 
 
+
+### inserting data
+```bash
+$ const Users = db.getModel('users)
+$ const result = await Users.insert({
+     username: 'user1',
+     email: 'user1@example.com',
+     age: 26,
+     })
+$console.log(result)
+```
+
+
 ### getting data
 ```bash
-$ const user1 = Users.get(1)
+$ const Users = db.getModel('users)
+$ const user1 = Users.get(1) //gets user by id
 $ console.log(user1)
 ```
 
