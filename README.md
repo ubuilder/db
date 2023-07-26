@@ -23,3 +23,34 @@ $ await db.createTable('users',
       age: 'number'
   })
 ```
+
+
+### getting Model
+```bash
+$ const Users = db.getModel('users)
+$ 
+```
+
+
+### getting data
+```bash
+$ const user1 = Users.get(1)
+$ console.log(user1)
+```
+
+
+### query data
+```bash
+$ const user1 = await Users.query(
+        {
+            select: {
+                username: true,
+                email: true,
+                age: true,
+            },
+            where: {
+                id: 1
+        }
+    )
+$ console.log(user1)
+```
