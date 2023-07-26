@@ -77,3 +77,14 @@ const user1 = await Users.query(
     )
 console.log(user1)
 ```
+
+
+### remove data
+```bash
+const Users = db.getModel('users)
+const result = await Users.remove(1)
+console.log(result)
+```
+
+
+
