@@ -1,5 +1,5 @@
 import { getModel } from "./model/model.js";
-import { createTable, removeColumns, removeTable, renameTable, updateColumn } from "./table.js";
+import { addColumns, createTable, removeColumns, removeTable, renameTable, updateColumn } from "./table.js";
 import knex from "knex";
 
 /**
