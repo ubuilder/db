@@ -1,18 +1,25 @@
-import { readFile, writeFile } from "fs/promises";
+import { readFile, stat, writeFile } from "fs/promises";
 export function connect({ filename = ":memory:" } = {}) {
   let data;
-  if (filename === ":memory:") {
-    data = {};
-  } else {
-    data = JSON.parse(fs.readFileSync(filename, "utf-8") ?? "{}");
-  }
 
   async function get(field) {
+    
     if (!data) {
-      const fileContent = await fs.readFileSync(filename, "utf-8");
+      if(filename === ':memory:') {
+        data = {}
+      }
+      try {
+
+      const fileContent = await readFile(filename, "utf-8");
 
       data = JSON.parse(fileContent ?? "{}");
+    } catch(err) {
+
+      data = {}
+
+
     }
+  }
 
     return data[field] ?? [];
   }
