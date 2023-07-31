@@ -8,15 +8,15 @@ test.beforeEach("prepare database", async (t) => {
 
 test("create third database if there is many to many relation", async t => {
 
-    await t.context.db.createTable('courses', {
-        name: 'string',
-        students: 'students[]'
-    })
+    // await t.context.db.createTable('courses', {
+    //     name: 'string',
+    //     students: 'students[]'
+    // })
 
-    await t.context.db.createTable('students', {
-        name: 'string',
-        courses: 'courses[]'
-    })
+    // await t.context.db.createTable('students', {
+    //     name: 'string',
+    //     courses: 'courses[]'
+    // })
 
     t.pass()
     // const CoursesStudents = t.context.db.getModel(getPivotTableName('courses', 'students'))

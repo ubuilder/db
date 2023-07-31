@@ -4,10 +4,10 @@ import { connect } from "../../src/connect.js";
 test.beforeEach("prepare database", async (t) => {
   t.context.db = connect();
 
-  await t.context.db.createTable("test_users", {
-    name: "string",
-    test: "string",
-  });
+  // await t.context.db.createTable("test_users", {
+  //   name: "string",
+  //   test: "string",
+  // });
 
   t.context.usersModel = t.context.db.getModel("test_users");
 });

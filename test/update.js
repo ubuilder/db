@@ -4,14 +4,14 @@ import { connect } from "../src/connect.js";
 test("add a relation by id", async (t) => {
   const { createTable, removeTable, getModel } = connect();
 
-  await createTable("users", {
-    name: "string",
-  });
+  // await createTable("users", {
+  //   name: "string",
+  // });
 
-  await createTable("posts", {
-    title: "string",
-    creator: "users",
-  });
+  // await createTable("posts", {
+  //   title: "string",
+  //   creator: "users",
+  // });
 
   const Users = getModel("users");
   const Posts = getModel("posts");
@@ -53,8 +53,6 @@ test("add a relation by id", async (t) => {
   t.deepEqual(usersWithPosts.data.length, 1);
   t.deepEqual(usersWithPosts.data[0].the_posts.length, 5);
 
-  await removeTable("users");
-  await removeTable("posts");
 });
 
 test.todo("add a relation");

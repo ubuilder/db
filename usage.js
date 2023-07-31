@@ -1,50 +1,60 @@
 import { connect } from "./src/connect.js";
 
-const { getModel, createTable } = connect({
-  filename: ":memory:",
+const {getModel} = connect()
+
+const Users = getModel("users");
+const Posts = getModel("posts");
+
+const [userId] = await Users.insert({
+  name: "Hadi",
+  username: "hadi",
+  // posts: [
+  // ],
 });
 
-await createTable("user", {
-  name: "string",
-  age: "number",
-  posts: "post[]",
-});
+const [post1Id] = await Posts.insert({
+   body: "This is first body", title: "Post title #1", creator_id: userId 
+})
+const [post2Id] = await Posts.insert({
+body: "This is second body", title: "Post title #2", creator_id: userId
+})
 
-await createTable("post", {
-  title: "string",
-  content: "string",
-  creator: "user",
-});
 
-const users = getModel("user");
-
-const ids = await users.insert({ name: "Hadi", age: 29 });
-await users.insert({ name: "Hadi2", age: 19 });
-
-await getModel("post").insert({
-  title: "first post",
-  content: "content",
-  creator_id: ids[0],
-});
-const id2 = await getModel("post").insert({
-  title: "second post",
-  content: "content",
-  creator_id: ids[0],
-});
-
-const result = await getModel('post').query({
-  with: {
-    the_creator: {
-      table: "user",
-      field: "creator_id",
-      select: {
-        age: true
-      }
-    },
+const users = await Users.query({
+  select: {
+    name: true,
+    username: true,
   },
-  // where: {
-  //   id: {value: 1, operator: '!='}
-  // }
+  with: {
+    posts: {
+      table: 'posts',
+      field: 'creator_id',
+      multiple: true,
+    }
+  }
 });
 
-console.log(result.data);
+console.log(users.data.length, 1);
+console.log(users.data[0], {
+  id: userId,
+  name: "Hadi",
+  username: "hadi",
+  posts: [
+    {
+      id: post1Id,
+      creator_id: userId,
+      body: "This is first body",
+      title: "Post title #1",
+    },
+    {
+      id: post2Id,
+      creator_id: userId,
+      body: "This is second body",
+      title: "Post title #2",
+    },
+  ],
+});
+
+const posts = await Posts.query();
+
+console.log(posts.data.length, 2);

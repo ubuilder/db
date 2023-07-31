@@ -4,10 +4,10 @@ import { connect } from "../../src/connect.js";
 test.beforeEach("prepare database", async (t) => {
   t.context.db = connect();
 
-  await t.context.db.createTable("test_users", {
-    name: "string",
-    test: "string",
-  });
+  // await t.context.db.createTable("test_users", {
+  //   name: "string",
+  //   test: "string",
+  // });
 
   t.context.usersModel = t.context.db.getModel("test_users");
 });
@@ -108,14 +108,14 @@ test("query select some fields", async (t) => {
 });
 
 test("should select only specified fields", async (t) => {
-  await t.context.db.createTable("questions", {
-    title: "string",
-  });
-  await t.context.db.createTable("answers", {
-    value: "string",
-    question: "questions",
-    is_correct: "boolean",
-  });
+  // await t.context.db.createTable("questions", {
+  //   title: "string",
+  // });
+  // await t.context.db.createTable("answers", {
+  //   value: "string",
+  //   question: "questions",
+  //   is_correct: "boolean",
+  // });
 
   const Questions = t.context.db.getModel("questions");
   const Answers = t.context.db.getModel("answers");
@@ -239,16 +239,16 @@ test.skip("sort", async (t) => {
 });
 
 test("relationship", async (t) => {
-  await t.context.db.createTable("users", {
-    name: "string",
-    test: "string",
-  });
+  // await t.context.db.createTable("users", {
+  //   name: "string",
+  //   test: "string",
+  // });
 
-  await t.context.db.createTable("other", {
-    name: "string",
-    description: "string",
-    creator: "users",
-  });
+  // await t.context.db.createTable("other", {
+  //   name: "string",
+  //   description: "string",
+  //   creator: "users",
+  // });
 
   const users = t.context.db.getModel("users");
   const other = t.context.db.getModel("other");
@@ -334,6 +334,4 @@ test("relationship", async (t) => {
   t.deepEqual(query2.data[0].creator.test, "this is test1");
   t.falsy(query2.data[0].description);
 
-  await t.context.db.removeTable("users");
-  await t.context.db.removeTable("other");
 });

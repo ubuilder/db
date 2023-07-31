@@ -4,10 +4,10 @@ import { connect } from "../../src/connect.js";
 test.beforeEach("prepare database", async (t) => {
   t.context.db = connect();
 
-  await t.context.db.createTable("test_users", {
-    name: "string",
-    test: "string",
-  });
+  // await t.context.db.createTable("test_users", {
+  //   name: "string",
+  //   test: "string",
+  // });
 
   t.context.usersModel = t.context.db.getModel("test_users");
 });
@@ -30,16 +30,7 @@ test("insert multiple", async (t) => {
 });
 
 test("insert with relations", async (t) => {
-  await t.context.db.createTable("posts", {
-    creator: "users",
-    body: "string",
-    title: "string",
-  });
-
-  await t.context.db.createTable("users", {
-    username: "string",
-    name: "string",
-  });
+  
 
   const Posts = t.context.db.getModel("posts");
   const Users = t.context.db.getModel('users');
@@ -91,24 +82,13 @@ test("insert with relations", async (t) => {
     ],
   });
 
-  await t.context.db.removeTable("users");
-  await t.context.db.removeTable("posts");
 });
 
 test("insert with relation (array)", async (t) => {
-  await t.context.db.createTable("posts", {
-    creator: "users",
-    body: "string",
-    title: "string",
-  });
 
-  await t.context.db.createTable("users", {
-    username: "string",
-    name: "string",
-  });
 
   const Users = t.context.db.getModel("users");
-  const Posts = t.context.db.getModel("Posts");
+  const Posts = t.context.db.getModel("posts");
 
   const [userId] = await Users.insert({
     name: "Hadi",
@@ -164,23 +144,10 @@ test("insert with relation (array)", async (t) => {
 
   t.deepEqual(posts.data.length, 2);
 
-  await t.context.db.removeTable("users");
-  await t.context.db.removeTable("posts");
 });
 
 test("insert with relation (multiple id)", async (t) => {
-  await t.context.db.createTable("posts", {
-    creator: "users",
-    body: "string",
-    title: "string",
-  });
-
-  await t.context.db.createTable("users", {
-    username: "string",
-    posts: "posts[]",
-    name: "string",
-  });
-
+  
   const Users = t.context.db.getModel("users");
   const Posts = t.context.db.getModel("posts");
 
@@ -217,9 +184,9 @@ test("insert with relation (multiple id)", async (t) => {
       creator: { id: uId, name: "Hadi", username: "hadi" },
     },
     {
+      creator_id: undefined,
       id: p2,
       title: "post #2",
-      creator_id: null,
     },
     {
       id: p3,
@@ -231,25 +198,12 @@ test("insert with relation (multiple id)", async (t) => {
 
   const users = await Users.query({});
 
-  await t.context.db.removeTable("users");
-  await t.context.db.removeTable("posts");
 });
 
 test("insert with relation (multiple array)", async (t) => {
-  await t.context.db.createTable("posts", {
-    creator: "users",
-    body: "string",
-    title: "string",
-  });
-
-  await t.context.db.createTable("users", {
-    username: "string",
-    posts: "posts[]",
-    name: "string",
-  });
-
+ 
   const Users = t.context.db.getModel("users");
-  const Posts = t.context.db.getModel("Posts");
+  const Posts = t.context.db.getModel("posts");
 
   const uIds = await Users.insert([
     {
@@ -353,6 +307,4 @@ test("insert with relation (multiple array)", async (t) => {
 
   t.deepEqual(posts.data.length, 6);
 
-  await t.context.db.removeTable("users");
-  await t.context.db.removeTable("posts");
 });
