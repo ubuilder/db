@@ -1,4 +1,5 @@
-import { readFile, stat, writeFile } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
+import uuid from 'uuidv4'
 export function connect({ filename = ":memory:" } = {}) {
   let data;
 
@@ -145,6 +146,20 @@ export function connect({ filename = ":memory:" } = {}) {
           );
         }
 
+        if(sort) {
+          const {column, order} = sort
+
+          rows = rows.sort((a, b) => {
+            let x = 1
+            if(order.toLowerCase() === 'desc') {
+              x = -1
+            }
+
+            return a[column] > b[column] ? x : -x
+          })
+
+        }
+
         let total = rows.length;
         perPage = Math.min(perPage, total);
 
@@ -171,7 +186,7 @@ export function connect({ filename = ":memory:" } = {}) {
           } else {
             rows = [row];
           }
-          const newRows = rows.map((x) => ({ id: crypto.randomUUID(), ...x }));
+          const newRows = rows.map((x) => ({ id: uuid(), ...x }));
 
           console.log("save", field, [...(await get(field)), ...newRows]);
           await save(field, [...(await get(field)), ...newRows]);
