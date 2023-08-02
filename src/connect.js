@@ -1,5 +1,5 @@
 import { readFile, writeFile } from "fs/promises";
-import uuid from 'uuidv4'
+import {uuid} from 'uuidv4'
 export function connect({ filename = ":memory:" } = {}) {
   let data;
 
