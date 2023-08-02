@@ -41,7 +41,7 @@ export function connect({ filename = ":memory:" } = {}) {
       //   data[field] = []
       // }
       async function query(
-        { where, select, with: preloads, page = 1, perPage = 10 } = {},
+        { where, select, sort, with: preloads, page = 1, perPage = 10 } = {},
         table = field
       ) {
         console.log("query ", table, {
