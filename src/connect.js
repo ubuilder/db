@@ -212,6 +212,9 @@ export function connect({ filename = ":memory:" } = {}) {
         },
       };
     },
+    invalidate() {
+      data = undefined
+    }
     // createTable()
   };
 }
