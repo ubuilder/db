@@ -22,7 +22,7 @@ export function connect({ filename = ":memory:" } = {}) {
     }
   }
 
-    return data[field] ?? [];
+    return JSON.parse(JSON.stringify(data[field] ?? []));
   }
 
   async function save(field, rows) {
