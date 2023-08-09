@@ -208,7 +208,8 @@ export function connect({ filename = ":memory:" } = {}) {
           return result;
         },
         async remove(id) {
-          await save((await get(field)).filter((row) => row.id === id));
+          const data = await get(field);
+          await save(field, data.filter((row) => row.id === id));
         },
       };
     },
