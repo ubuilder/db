@@ -1,5 +1,12 @@
 import { readFile, writeFile } from "fs/promises";
-import {uuid} from 'uuidv4'
+import { customAlphabet } from 'nanoid';
+
+export function id() {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  const nanoid = customAlphabet(alphabet, 8);
+  return nanoid()
+}
+
 export function connect({ filename = ":memory:" } = {}) {
   let data;
 
@@ -15,7 +22,7 @@ export function connect({ filename = ":memory:" } = {}) {
 
       data = JSON.parse(fileContent ?? "{}");
     } catch(err) {
-
+      console.log('found error')
       data = {}
 
 
@@ -27,7 +34,6 @@ export function connect({ filename = ":memory:" } = {}) {
 
   async function save(field, rows) {
     data[field] = rows;
-    console.log("save");
     if (filename === ":memory:") return;
 
     await writeFile(filename, JSON.stringify(data));
@@ -44,17 +50,8 @@ export function connect({ filename = ":memory:" } = {}) {
         { where, select, sort, with: preloads, page = 1, perPage = 10 } = {},
         table = field
       ) {
-        console.log("query ", table, {
-          where,
-          select,
-          preloads,
-          page,
-          perPage,
-        });
 
         let rows = await get(table);
-
-        console.log({ rows });
 
         if (where) {
           rows = rows.filter((row) => {
@@ -85,17 +82,6 @@ export function connect({ filename = ":memory:" } = {}) {
             return result;
           });
         }
-
-        // with: {
-        //   others: {
-        //     table: "other",
-        //     field: "creator_id",
-        //     multiple: true,
-        //     select: {
-        //       name: true,
-        //     },
-        //   },
-        // },
         if (select) {
           rows = rows.map((row) => {
             let result = {};
@@ -111,9 +97,7 @@ export function connect({ filename = ":memory:" } = {}) {
           rows = await Promise.all(
             rows.map(async (row) => {
               for (let preload in preloads) {
-                console.log("Preload: ", preload, row)
                 if (preloads[preload].multiple) {
-                  console.log("multiple", preloads[preload].field, row.id, preloads[preload].table);
                   
                   row[preload] = await query(
                     {
@@ -179,22 +163,19 @@ export function connect({ filename = ":memory:" } = {}) {
           return query(options).then(res => res.data[0])
         },
         async insert(row) {
-          console.log("insert", { row });
           let rows = [];
           if (Array.isArray(row)) {
             rows = row;
           } else {
             rows = [row];
           }
-          const newRows = rows.map((x) => ({ id: uuid(), ...x }));
+          const newRows = rows.map((x) => ({ id: id(), ...x }));
 
-          console.log("save", field, [...(await get(field)), ...newRows]);
           await save(field, [...(await get(field)), ...newRows]);
 
           return newRows.map((row) => row.id);
         },
         async update(id, newRow = {}) {
-          console.log("update", { id, newRow });
           let result = {};
           const rows = (await get(field)).map((row) => {
             if (row.id === id) {
