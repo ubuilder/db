@@ -1,33 +1,30 @@
 import { readFile, writeFile } from "fs/promises";
-import { customAlphabet } from 'nanoid';
+import { customAlphabet } from "nanoid";
 
 export function id() {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   const nanoid = customAlphabet(alphabet, 8);
-  return nanoid()
+  return nanoid();
 }
 
 export function connect({ filename = ":memory:" } = {}) {
   let data;
 
   async function get(field) {
-    
     if (!data) {
-      if(filename === ':memory:') {
-        data = {}
+      if (filename === ":memory:") {
+        data = {};
       }
       try {
+        const fileContent = await readFile(filename, "utf-8");
 
-      const fileContent = await readFile(filename, "utf-8");
-
-      data = JSON.parse(fileContent ?? "{}");
-    } catch(err) {
-      console.log('found error')
-      data = {}
-
-
+        data = JSON.parse(fileContent ?? "{}");
+      } catch (err) {
+        console.log(err);
+        console.log("found error");
+        data = {}
+      }
     }
-  }
 
     return JSON.parse(JSON.stringify(data[field] ?? []));
   }
@@ -50,7 +47,6 @@ export function connect({ filename = ":memory:" } = {}) {
         { where, select, sort, with: preloads, page = 1, perPage = 10 } = {},
         table = field
       ) {
-
         let rows = await get(table);
 
         if (where) {
@@ -77,7 +73,6 @@ export function connect({ filename = ":memory:" } = {}) {
                 result = false;
               if (operator === "like" && row[key].indexOf(value) === -1)
                 result = false;
-
             });
             return result;
           });
@@ -98,7 +93,6 @@ export function connect({ filename = ":memory:" } = {}) {
             rows.map(async (row) => {
               for (let preload in preloads) {
                 if (preloads[preload].multiple) {
-                  
                   row[preload] = await query(
                     {
                       where: {
@@ -120,8 +114,8 @@ export function connect({ filename = ":memory:" } = {}) {
                     },
                     preloads[preload].table
                   ).then((res) => res.data[0]);
-                  if(res) {
-                    row[preload] = res;                    
+                  if (res) {
+                    row[preload] = res;
                   }
                 }
               }
@@ -130,18 +124,17 @@ export function connect({ filename = ":memory:" } = {}) {
           );
         }
 
-        if(sort) {
-          const {column, order} = sort
+        if (sort) {
+          const { column, order } = sort;
 
           rows = rows.sort((a, b) => {
-            let x = 1
-            if(order.toLowerCase() === 'desc') {
-              x = -1
+            let x = 1;
+            if (order.toLowerCase() === "desc") {
+              x = -1;
             }
 
-            return a[column] > b[column] ? x : -x
-          })
-
+            return a[column] > b[column] ? x : -x;
+          });
         }
 
         let total = rows.length;
@@ -160,7 +153,7 @@ export function connect({ filename = ":memory:" } = {}) {
       return {
         query,
         async get(options) {
-          return query(options).then(res => res.data[0])
+          return query(options).then((res) => res.data[0]);
         },
         async insert(row) {
           let rows = [];
@@ -190,13 +183,16 @@ export function connect({ filename = ":memory:" } = {}) {
         },
         async remove(id) {
           const data = await get(field);
-          await save(field, data.filter((row) => row.id !== id));
+          await save(
+            field,
+            data.filter((row) => row.id !== id)
+          );
         },
       };
     },
     invalidate() {
-      data = undefined
-    }
+      data = undefined;
+    },
     // createTable()
   };
 }
