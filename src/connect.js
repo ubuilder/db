@@ -65,7 +65,7 @@ export function connect({ filename = ":memory:" } = {}) {
               if (operator === "<=" && row[key] > value) result = false;
               if (operator === "<" && row[key] >= value) result = false;
               if (
-                operator === "between" &&
+                operator === "between" && Array.isArray(value) &&
                 (row[key] < value[0] || row[key] > value[1])
               )
                 result = false;
