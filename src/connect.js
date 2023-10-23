@@ -1,3 +1,4 @@
+import { readFileSync } from "fs";
 import { readFile, writeFile } from "fs/promises";
 import { customAlphabet } from "nanoid";
 
@@ -15,25 +16,39 @@ export function connect({ filename = ":memory:" } = {}) {
       if (filename === ":memory:") {
         data = {};
       }
-      try {
-        const fileContent = await readFile(filename, "utf-8");
 
-        data = JSON.parse(fileContent ?? "{}");
+      let fileContent;
+      try {
+        fileContent = await readFile(filename, "utf-8");
+        if (fileContent) {
+          data = JSON.parse(fileContent ?? "{}");
+        } else {
+          data = {};
+        }
       } catch (err) {
+        console.log(fileContent, typeof fileContent);
         console.log(err);
         console.log("found error");
-        data = {}
+        data = {};
       }
     }
 
     return JSON.parse(JSON.stringify(data[field] ?? []));
   }
 
+  let timer;
   async function save(field, rows) {
     data[field] = rows;
     if (filename === ":memory:") return;
 
-    await writeFile(filename, JSON.stringify(data));
+    const originalSave = async (data) => {
+      await writeFile(filename, JSON.stringify(data));
+    };
+
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+      originalSave(data);
+    }, 1000);
   }
 
   return {
@@ -65,7 +80,8 @@ export function connect({ filename = ":memory:" } = {}) {
               if (operator === "<=" && row[key] > value) result = false;
               if (operator === "<" && row[key] >= value) result = false;
               if (
-                operator === "between" && Array.isArray(value) &&
+                operator === "between" &&
+                Array.isArray(value) &&
                 (row[key] < value[0] || row[key] > value[1])
               )
                 result = false;
