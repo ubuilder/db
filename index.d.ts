@@ -57,4 +57,5 @@ export type ConnectParams = {
     database: string
 }
 
-export type ConnectType = (params: ConnectParams) => ConnectResult
+export type connect = (params: ConnectParams) => ConnectResult; 
+export type id = () => string;
