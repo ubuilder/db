@@ -41,13 +41,15 @@ export function connect({ filename = ":memory:" } = {}) {
     data[field] = rows;
     if (filename === ":memory:") return;
 
-    const originalSave = async (data) => {
-      await writeFile(filename, JSON.stringify(data));
+    const originalSave = async (dataStr) => {
+      await writeFile(filename, dataStr);
     };
 
+    const dataStr = JSON.stringify(data)
     if (timer) clearTimeout(timer);
+    
     timer = setTimeout(() => {
-      originalSave(data);
+      originalSave(dataStr);
     }, 1000);
   }
 
