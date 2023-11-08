@@ -12,6 +12,7 @@ export function connect({ filename = ":memory:" } = {}) {
   let data;
 
   async function get(field) {
+    console.log('get: ', {field, data})
     if (!data) {
       if (filename === ":memory:") {
         data = {};
@@ -33,15 +34,19 @@ export function connect({ filename = ":memory:" } = {}) {
       }
     }
 
-    return JSON.parse(JSON.stringify(data[field] ?? []));
+    const res = JSON.parse(JSON.stringify(data[field] ?? []));
+    console.log('result of get: ', res)
+    return res
   }
 
   let timer;
   async function save(field, rows) {
+    console.log('save: ', {field, rows})
     data[field] = rows;
     if (filename === ":memory:") return;
 
     const originalSave = async (dataStr) => {
+      console.log('write file', dataStr)
       await writeFile(filename, dataStr);
     };
 
