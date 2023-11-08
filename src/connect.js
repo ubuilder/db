@@ -9,53 +9,67 @@ export function id() {
 }
 
 export function connect({ filename = ":memory:" } = {}) {
-  let data;
+  let data = null;
 
   async function get(field) {
     console.log('get: ', {field, data})
-    if (!data) {
-      if (filename === ":memory:") {
-        data = {};
-      }
+    return new Promise((resolve) => {
+      setTimeout(async () => {
+        console.log('get: ', {field, data})
+        if (!data) {
+          if (filename === ":memory:") {
+            data = {};
+          }
 
-      let fileContent;
-      try {
-        fileContent = await readFile(filename, "utf-8");
-        if (fileContent) {
-          data = JSON.parse(fileContent ?? "{}");
-        } else {
-          data = {};
+          let fileContent;
+          try {
+            fileContent = await readFile(filename, "utf-8");
+            if (fileContent) {
+              data = JSON.parse(fileContent ?? "{}");
+            } else {
+              data = {};
+            }
+          } catch (err) {
+            console.log(fileContent, typeof fileContent);
+            console.log(err);
+            console.log("found error");
+            data = {};
+          }
         }
-      } catch (err) {
-        console.log(fileContent, typeof fileContent);
-        console.log(err);
-        console.log("found error");
-        data = {};
-      }
-    }
 
-    const res = JSON.parse(JSON.stringify(data[field] ?? []));
-    console.log('result of get: ', res)
-    return res
+      const res = JSON.parse(JSON.stringify(data[field] ?? []));
+      console.log('result of get: ', res)
+      resolve(res)
+    }, 20)
+  })
+
   }
 
   let timer;
   async function save(field, rows) {
-    console.log('save: ', {field, rows})
-    data[field] = rows;
-    if (filename === ":memory:") return;
+    return new Promise((resolve) => {
+      console.log('save: ', {field, rows})
+      if(!data) {
+        data = {}
+      }
+      data[field] = rows;
+      console.log("data after save: ", data)
+      if (filename === ":memory:") return;
 
-    const originalSave = async (dataStr) => {
-      console.log('write file', dataStr)
-      await writeFile(filename, dataStr);
-    };
+      const originalSave = async (dataStr) => {
+      
+        await writeFile(filename, dataStr);
+        resolve(data[field])
+      };
 
-    const dataStr = JSON.stringify(data)
-    if (timer) clearTimeout(timer);
+      const dataStr = JSON.stringify(data)
+      if (timer) clearTimeout(timer);
+
+        timer = setTimeout(() => {
+          originalSave(dataStr);
+        }, 100);  
+    })
     
-    timer = setTimeout(() => {
-      originalSave(dataStr);
-    }, 1000);
   }
 
   return {
